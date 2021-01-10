@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('_helpers/db');
 const User = db.User;
+const axios = require('axios')
 
 module.exports = {
     authenticate,
@@ -13,8 +14,9 @@ module.exports = {
     delete: _delete
 };
 
-async function authenticate({ username, password }) {
-    const user = await User.findOne({ username });
+async function authenticate({ email, password }) {
+    console.log(email);
+    const user = await User.findOne({ email });
     if (user && bcrypt.compareSync(password, user.hash)) {
         const token = jwt.sign({ sub: user.id }, config.secret, { expiresIn: '7d' });
         return {
@@ -29,16 +31,22 @@ async function getAll() {
 }
 
 async function getById(id) {
+    // console.log(id);
     return await User.findById(id);
 }
 
 async function create(userParam) {
     // validate
-    if (await User.findOne({ username: userParam.username })) {
-        throw 'Username "' + userParam.username + '" is already taken';
+    if (await User.findOne({ email: userParam.email })) {
+        throw 'email "' + userParam.email + '" is already taken';
     }
 
+    console.log("here baby 1");
+
     const user = new User(userParam);
+
+    console.log("here baby 2");
+    console.log(userParam);
 
     // hash password
     if (userParam.password) {
@@ -46,6 +54,30 @@ async function create(userParam) {
     }
 
     // save user
+    try {
+        await user.save();
+        try {
+            // insert profile for freshly created user
+            console.log(JSON.stringify(user));
+            axios.post('http://localhost:5000/profiles', {
+                userId: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
+            }).then(res => {
+                console.log(`statusCode: ${res.statusCode}`);
+                console.log(res);
+            }).catch(error => {
+                console.error(error);
+            });
+        } catch (err) {
+            console.log("Error: The profile for user couldn't be saved.")
+
+        }
+    } catch (err) {
+        console.log(err);
+        console.log("Error: The user account couldn't be saved.")
+    }
     await user.save();
 }
 
@@ -54,8 +86,8 @@ async function update(id, userParam) {
 
     // validate
     if (!user) throw 'User not found';
-    if (user.username !== userParam.username && await User.findOne({ username: userParam.username })) {
-        throw 'Username "' + userParam.username + '" is already taken';
+    if (user.email !== userParam.email && await User.findOne({ email: userParam.email })) {
+        throw 'email "' + userParam.email + '" is already taken';
     }
 
     // hash password if it was entered
