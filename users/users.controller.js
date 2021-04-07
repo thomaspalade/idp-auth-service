@@ -1,9 +1,12 @@
 ﻿const express = require('express');
 const router = express.Router();
 const userService = require('./user.service');
+const db = require('_helpers/db');
+const User = db.User;
 
 // routes
 router.post('/authenticate', authenticate);
+router.post('/updateUserData', updateUserData);
 router.post('/register', register);
 router.get('/', getAll);
 router.get('/current', getCurrent);
@@ -45,9 +48,30 @@ function getById(req, res, next) {
 }
 
 function update(req, res, next) {
+    console.log("here calling update function");
     userService.update(req.params.id, req.body)
         .then(() => res.json({}))
         .catch(err => next(err));
+}
+
+async function updateUserDataStuff(userData) {
+    console.log(userData);
+    const email = userData.email;
+    const hash = userData.hash;
+    console.log(hash);
+    try {
+        const updatedUser = await User.updateOne({"email": email}, { $set: { "hash" : hash }});
+    } catch (err) {
+        console.log(err);
+    }
+};
+
+
+function updateUserData(req, res, next) {
+    console.log("here calling updateUserData function");
+    const body = req.body;
+    console.log(body);
+    updateUserDataStuff(body);
 }
 
 function _delete(req, res, next) {
