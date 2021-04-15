@@ -7,16 +7,13 @@ const axios = require('axios')
 
 module.exports = {
     authenticate,
-    updateUserData,
     getAll,
     getById,
     create,
-    update,
-    delete: _delete,
+    update
 };
 
 async function authenticate({ email, password }) {
-    // console.log(email);
     const user = await User.findOne({ email });
     if (user && bcrypt.compareSync(password, user.hash)) {
         const token = jwt.sign({ sub: user.id }, config.secret, { expiresIn: '7d' });
@@ -43,14 +40,11 @@ async function create(userParam) {
     }
 
     const user = new User(userParam);
-    // console.log(userParam);
 
     // hash password
     const hashedPassword = bcrypt.hashSync(userParam.password, 10)
     if (userParam.password) {
-        console.log("here beb");
-        console.log(userParam.password);
-        
+        console.log(userParam.password); 
         user.hash = hashedPassword;
     }
 
@@ -59,13 +53,11 @@ async function create(userParam) {
         await user.save();
         try {
             // insert profile for freshly created user
-            console.log(JSON.stringify(user));
-            axios.post('http://localhost:5000/profiles', {
+            axios.post('http://localhost:9998/profiles', {
                 userId: user.id,
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                extraUserInfo: user,
                 hash: hashedPassword
             }).then(res => {
                 console.log(`statusCode: ${res.statusCode}`);
@@ -92,10 +84,6 @@ async function update(id, userParam) {
         throw 'email "' + userParam.email + '" is already taken';
     }
 
-    console.log('inside update user');
-
-    console.log(userParam);
-
     // hash password if it was entered
     if (userParam.password) {
         userParam.hash = bcrypt.hashSync(userParam.password, 10);
@@ -103,17 +91,5 @@ async function update(id, userParam) {
 
     // copy userParam properties to user
     Object.assign(user, userParam);
-
     const updatedUser = await user.save();
-
-    console.log(updatedUser);
-}
-
-async function updateUserData(userData) {
-    console.log("userData");
-    console.log(userData);
-}
-
-async function _delete(id) {
-    await User.findByIdAndRemove(id);
 }
